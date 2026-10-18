@@ -1,0 +1,68 @@
+#!/bin/sh
+set -eu
+
+base_dir=${SYNCRO1_BASE_DIR:-/opt/syncro1}
+release_tag=${RELEASE_TAG:-$(date -u +%Y%m%d%H%M%S)}
+archive=${RELEASE_ARCHIVE:-}
+checksum=${RELEASE_SHA256:-}
+
+if [ -z "$archive" ] && [ -n "${RELEASE_S3_URI:-}" ]; then
+	archive="$(mktemp /tmp/syncro1-release.XXXXXX.tar.gz)"
+	aws s3 cp "$RELEASE_S3_URI" "$archive"
+elif [ -n "$archive" ]; then
+	archive=$(readlink -f "$archive")
+else
+	echo 'Set RELEASE_ARCHIVE or RELEASE_S3_URI.' >&2
+	exit 1
+fi
+
+if [ -z "$checksum" ] && [ -n "${RELEASE_SHA256_URI:-}" ]; then
+	checksum="$(mktemp /tmp/syncro1-release.XXXXXX.sha256)"
+	aws s3 cp "$RELEASE_SHA256_URI" "$checksum"
+fi
+if [ -z "$checksum" ] && [ -f "$archive.sha256" ]; then
+	checksum="$archive.sha256"
+fi
+if [ -z "$checksum" ]; then
+	echo 'A SHA-256 checksum is required; set RELEASE_SHA256 or RELEASE_SHA256_URI.' >&2
+	exit 1
+fi
+
+archive_dir="$base_dir/releases"
+release_root="$archive_dir/$release_tag"
+previous_target=''
+if [ -L "$base_dir/current" ]; then
+	previous_target=$(readlink -f "$base_dir/current")
+fi
+install -d -m 0755 "$archive_dir"
+rm -rf "$release_root"
+install -d -m 0755 "$release_root"
+
+checksum_file=$(basename "$archive").sha256
+cp "$checksum" "$release_root/$checksum_file"
+(cd "$(dirname "$archive")" && sha256sum -c "$release_root/$checksum_file")
+tar -xzf "$archive" -C "$release_root" --strip-components=1
+
+if [ -f /etc/syncro1/syncro1.env ]; then
+	# shellcheck disable=SC1091
+	. /etc/syncro1/syncro1.env
+fi
+"$release_root/syncro1/deploy/render-config.sh" "$release_root"
+"$release_root/syncro1/deploy/upgrade-release.sh" "$release_root"
+
+ln -sfn "$release_root" "$base_dir/current"
+systemctl reload php8.3-fpm 2>/dev/null || systemctl restart php8.3-fpm
+systemctl reload nginx 2>/dev/null || systemctl restart nginx
+
+health_url=${SYNCRO1_HEALTH_URL:-http://127.0.0.1/healthz}
+if ! curl --fail --silent --show-error "$health_url" >/dev/null; then
+	echo 'Health check failed; rolling back the current symlink.' >&2
+	if [ -n "$previous_target" ]; then
+		ln -sfn "$previous_target" "$base_dir/current"
+		systemctl reload php8.3-fpm 2>/dev/null || true
+		systemctl reload nginx 2>/dev/null || true
+	fi
+	exit 1
+fi
+
+echo "Deployed $release_tag"

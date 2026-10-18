@@ -1,0 +1,14 @@
+project_name       = "syncro1"
+aws_region         = "ap-south-1"
+ec2_instance_type  = "t3.small"
+rds_instance_class = "db.t4g.small"
+app_domain         = "bugs.syncro1.com"
+mail_from_domain   = "syncro1.com"
+
+# Set this only when you intentionally want Terraform to create SecureStrings.
+# Prefer pre-created parameters and pass their ARNs through ssm_parameter_arns.
+create_ssm_parameters = false
+
+# ops_alarm_email = "ops@example.com"
+# route53_zone_id = "Z0123456789EXAMPLE"
+# create_route53_records = true

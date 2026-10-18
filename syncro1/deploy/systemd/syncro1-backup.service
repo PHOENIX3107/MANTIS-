@@ -1,0 +1,8 @@
+[Unit]
+Description=SYNCRO1 database backup
+After=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/syncro1/syncro1.env
+ExecStart=/opt/syncro1/current/syncro1/deploy/backup-db.sh

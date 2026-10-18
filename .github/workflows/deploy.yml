@@ -1,0 +1,46 @@
+name: SYNCRO1 manual deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Release tag or commit to deploy
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_tag }}
+          fetch-depth: 1
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Build signed release artifact
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          archive="syncro1-${RELEASE_TAG}.tar.gz"
+          git archive --format=tar.gz --prefix="syncro1-${RELEASE_TAG}/" "${RELEASE_TAG}" > "$archive"
+          sha256sum "$archive" > "$archive.sha256"
+          aws s3 cp "$archive" "s3://${{ vars.RELEASE_BUCKET }}/releases/"
+          aws s3 cp "$archive.sha256" "s3://${{ vars.RELEASE_BUCKET }}/releases/"
+      - name: Trigger EC2 deploy through SSM
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          archive="syncro1-${RELEASE_TAG}.tar.gz"
+          aws ssm send-command \
+            --document-name AWS-RunShellScript \
+            --targets "Key=instanceIds,Values=${{ vars.EC2_INSTANCE_ID }}" \
+            --parameters "commands=[\"export RELEASE_TAG=${RELEASE_TAG} RELEASE_S3_URI=s3://${{ vars.RELEASE_BUCKET }}/releases/${archive} RELEASE_SHA256_URI=s3://${{ vars.RELEASE_BUCKET }}/releases/${archive}.sha256; /opt/syncro1/current/syncro1/deploy/deploy-release\"]" \
+            --comment "SYNCRO1 ${RELEASE_TAG} deploy"

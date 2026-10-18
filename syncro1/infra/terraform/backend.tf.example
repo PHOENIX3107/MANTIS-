@@ -1,0 +1,12 @@
+# Optional remote state backend. Copy to backend.tf only after creating the
+# bucket/table through your organization's approved bootstrap process.
+#
+# terraform {
+#   backend "s3" {
+#     bucket         = "replace-with-state-bucket"
+#     key            = "syncro1/terraform.tfstate"
+#     region         = "ap-south-1"
+#     dynamodb_table = "replace-with-lock-table"
+#     encrypt        = true
+#   }
+# }

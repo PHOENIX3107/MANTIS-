@@ -1,0 +1,15 @@
+#!/bin/sh
+set -eu
+
+domain=${1:-${APP_DOMAIN:-}}
+email=${2:-${ADMIN_EMAIL:-}}
+if [ -z "$domain" ] || [ -z "$email" ]; then
+	echo 'Usage: enable-tls APP_DOMAIN ADMIN_EMAIL' >&2
+	exit 1
+fi
+
+certbot --nginx --non-interactive --agree-tos --email "$email" \
+	-d "$domain" --redirect --hsts --staple-ocsp
+certbot renew --dry-run
+systemctl reload nginx
+echo "TLS enabled for $domain; renewal dry-run passed."

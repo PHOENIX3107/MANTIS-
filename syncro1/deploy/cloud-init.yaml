@@ -1,0 +1,7 @@
+# Template only. Terraform supplies this file as EC2 user-data; no secrets belong here.
+# The host reads /etc/syncro1/syncro1.env from SSM/Secrets Manager during provisioning.
+#cloud-config
+package_update: true
+runcmd:
+  - [ bash, -lc, "mkdir -p /opt/syncro1 /etc/syncro1" ]
+  - [ bash, -lc, "echo 'Run syncro1/deploy/provision-host.sh from the signed release artifact.'" ]

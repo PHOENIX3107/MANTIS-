@@ -1,0 +1,132 @@
+services:
+  mysql:
+    image: mysql:8.4
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-mantis}
+      MYSQL_USER: ${MYSQL_USER:-mantis}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-mantis_local_password}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-change-root-local-password}
+    volumes:
+      - syncro1-db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  mailpit:
+    image: axllent/mailpit:v1.21
+    volumes:
+      - syncro1-mail:/data
+    environment:
+      MP_DATA_FILE: /data/mailpit.db
+    ports:
+      - "8025:8025"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8025/api/v1/info"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  php-fpm:
+    build:
+      context: ../..
+      dockerfile: syncro1/docker/Dockerfile
+    environment:
+      SYNCRO1_ENV: ${SYNCRO1_ENV:-development}
+      APP_NAME: ${APP_NAME:-SYNCRO1 Bug Tracker}
+      APP_DOMAIN: ${APP_DOMAIN:-localhost}
+      APP_URL: ${APP_URL:-http://localhost:8080/}
+      ALLOWED_EMAIL_DOMAINS: ${ALLOWED_EMAIL_DOMAINS:-syncro1.com,syncrosquad.com}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@syncro1.com}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-syn_admin}
+      ADMIN_INITIAL_PASSWORD: ${ADMIN_INITIAL_PASSWORD:-change-this-local-password-16}
+      DEFAULT_PROJECT_NAME: ${DEFAULT_PROJECT_NAME:-SYNCRO1 Product}
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-20}
+      APP_TIMEZONE: ${APP_TIMEZONE:-UTC}
+      COOKIE_SECURE: ${COOKIE_SECURE:-0}
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-mantis}
+      DB_USER: ${DB_USER:-mantis}
+      DB_PASSWORD: ${DB_PASSWORD:-mantis_local_password}
+      UPLOAD_DIR: /var/lib/syncro1/uploads
+      CRYPTO_MASTER_SALT: ${CRYPTO_MASTER_SALT:-local-only-change-me-0123456789}
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      MAIL_FROM: ${MAIL_FROM:-bugs@syncro1.com}
+    volumes:
+      - syncro1-app:/var/www/mantis
+      - syncro1-uploads:/var/lib/syncro1/uploads
+      - syncro1-logs:/var/log/syncro1
+    depends_on:
+      mysql:
+        condition: service_healthy
+      mailpit:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "php-fpm -t >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  nginx:
+    image: nginx:1.27-alpine
+    environment:
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-20}
+      PHP_FPM_UPSTREAM: php-fpm:9000
+      NGINX_ENVSUBST_FILTER: '^(MAX_UPLOAD_MB|PHP_FPM_UPSTREAM)$'
+    volumes:
+      - syncro1-app:/var/www/mantis:ro
+      - ../deploy/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ../deploy/nginx-vhost.conf.template:/etc/nginx/templates/default.conf.template:ro
+    ports:
+      - "8080:80"
+    depends_on:
+      php-fpm:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://127.0.0.1/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  cron:
+    build:
+      context: ../..
+      dockerfile: syncro1/docker/Dockerfile
+    command: ["sh", "-c", "while true; do php /var/www/mantis/scripts/send_emails.php >/dev/null 2>&1 || true; sleep 60; done"]
+    environment:
+      SYNCRO1_ENV: development
+      APP_URL: http://localhost:8080/
+      COOKIE_SECURE: ${COOKIE_SECURE:-0}
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-mantis}
+      DB_USER: ${DB_USER:-mantis}
+      DB_PASSWORD: ${DB_PASSWORD:-mantis_local_password}
+      CRYPTO_MASTER_SALT: ${CRYPTO_MASTER_SALT:-local-only-change-me-0123456789}
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      MAIL_FROM: ${MAIL_FROM:-bugs@syncro1.com}
+    volumes:
+      - syncro1-app:/var/www/mantis
+      - syncro1-logs:/var/log/syncro1
+    depends_on:
+      php-fpm:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "php -v >/dev/null 2>&1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  syncro1-db:
+  syncro1-app:
+  syncro1-uploads:
+  syncro1-mail:
+  syncro1-logs:
