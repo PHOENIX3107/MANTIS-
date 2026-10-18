@@ -1,4 +1,4 @@
-.PHONY: dev-up dev-down test lint
+.PHONY: dev-up dev-down test lint e2e restore-drill
 
 COMPOSE ?= docker compose -f syncro1/docker/docker-compose.yml
 
@@ -20,3 +20,11 @@ test:
 	$(COMPOSE) exec -T php-fpm /var/www/mantis/syncro1/scripts/audit-users.php
 	$(COMPOSE) exec -T php-fpm php /var/www/mantis/syncro1/scripts/healthcheck.php
 	SYNCRO1_BASE_URL=http://localhost:8080 MAILPIT_URL=http://localhost:8025 syncro1/tests/smoke.sh
+
+e2e:
+	npm ci
+	npx playwright install chromium
+	npm run test:e2e
+
+restore-drill:
+	RESTORE_DRILL_CONFIRM=YES syncro1/tests/restore-drill.sh

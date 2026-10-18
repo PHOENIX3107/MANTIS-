@@ -22,6 +22,7 @@ sed -e "s/\${MAX_UPLOAD_MB}/$t_max_upload_mb/g" \
 	> /usr/local/etc/php/conf.d/zz-syncro1.ini
 
 i=0
+# shellcheck disable=SC2016
 while ! php -r '$s=@fsockopen(getenv("DB_HOST") ?: "mysql", (int)(getenv("DB_PORT") ?: 3306), $e, $m, 2); if ($s) { fclose($s); exit(0); } exit(1);'; do
 	i=$((i + 1))
 	if [ "$i" -ge 60 ]; then

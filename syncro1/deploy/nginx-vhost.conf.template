@@ -41,6 +41,12 @@ server {
         return 404;
     }
 
+    # Upload storage is outside the web root in production; reject common
+    # direct-path probes before the application can redirect them to login.
+    location ~ ^/(?:uploads|var/lib/syncro1/uploads|syncro1/uploads)(?:/|$) {
+        return 404;
+    }
+
     location ~* /(?:composer\.(?:json|lock)|.*\.sql|.*\.log)$ {
         return 404;
     }
