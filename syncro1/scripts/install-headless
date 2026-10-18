@@ -1,0 +1,91 @@
+#!/usr/bin/env php
+<?php
+/**
+ * Install MantisBT's checked-out schema without an HTTP/browser step.
+ * Idempotence comes from the native schema version table and guarded schema API.
+ */
+
+$t_root = dirname( __DIR__, 2 );
+require_once $t_root . '/core.php';
+require_api( 'database_api.php' );
+require_api( 'config_api.php' );
+
+if( php_sapi_name() !== 'cli' ) {
+	fwrite( STDERR, "install-headless must run from CLI\n" );
+	exit( 1 );
+}
+
+require_once $t_root . '/admin/schema.php';
+
+global $g_db, $g_db_connected;
+$g_db_connected = true;
+$t_last_update = (int)config_get( 'database_version', -1, ALL_USERS, ALL_PROJECTS );
+$t_last_id = count( $g_upgrade ) - 1;
+$t_completed = 0;
+
+for( $i = $t_last_update + 1; $i <= $t_last_id; $i++ ) {
+	$t_dict = NewDataDictionary( $g_db );
+	if( $g_upgrade[$i] === null ) {
+		config_set( 'database_version', $i, ALL_USERS, ALL_PROJECTS );
+		$t_completed++;
+		continue;
+	}
+
+	$t_operation = $g_upgrade[$i][0];
+	$t_args = $g_upgrade[$i][1];
+	$t_target = $t_args[0] ?? null;
+	$t_sql = true;
+	if( 'InsertData' === $t_operation ) {
+		$t_sql_array = call_user_func_array( $t_operation, $t_args );
+	} elseif( 'UpdateSQL' === $t_operation ) {
+		$t_sql_array = array( $t_args );
+		$t_target = $t_args;
+	} elseif( 'UpdateFunction' === $t_operation ) {
+		$t_sql_array = array( $t_args );
+		if( isset( $g_upgrade[$i][2] ) ) {
+			$t_sql_array[] = $g_upgrade[$i][2];
+		}
+		$t_sql = false;
+	} else {
+		$t_sql_array = call_user_func_array( array( $t_dict, $t_operation ), $t_args );
+		if( isset( $g_upgrade[$i][2] ) ) {
+			$t_guard = $g_upgrade[$i][2];
+			if( !call_user_func_array( $t_guard[0], $t_guard[1] ) ) {
+				$t_sql_array = array();
+				$t_operation = 'No operation';
+			}
+		}
+	}
+
+	if( null === $t_target ) {
+		$t_ret = 2;
+	} elseif( $t_sql ) {
+		$t_ret = $t_dict->ExecuteSQLArray( $t_sql_array, false );
+	} elseif( isset( $t_sql_array[1] ) ) {
+		$t_ret = call_user_func( 'install_' . $t_sql_array[0], $t_sql_array[1] );
+	} else {
+		$t_ret = call_user_func( 'install_' . $t_sql_array[0] );
+	}
+
+	if( 2 !== $t_ret ) {
+		fwrite( STDERR, "Schema step $i failed: $t_operation ($t_target)\n" );
+		exit( 1 );
+	}
+	config_set( 'database_version', $i, ALL_USERS, ALL_PROJECTS );
+	$t_completed++;
+}
+
+# Mantis 2.28.4's schema generator uses its historic UTF-8 default. Convert the
+# created MySQL tables to utf8mb4 after the native schema API has completed.
+if( config_get_global( 'db_type' ) === 'mysqli' ) {
+	db_query( 'SET NAMES utf8mb4' );
+	$t_tables = db_query( "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME LIKE 'mantis\\_%'" );
+	while( $t_row = db_fetch_array( $t_tables ) ) {
+		$t_table = $t_row['TABLE_NAME'];
+		if( preg_match( '/^[A-Za-z0-9_]+$/', $t_table ) ) {
+			db_query( 'ALTER TABLE `' . $t_table . '` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci' );
+		}
+	}
+}
+
+fwrite( STDOUT, "Mantis schema ready; $t_completed schema steps applied.\n" );

@@ -1,0 +1,10 @@
+#!/bin/sh
+set -eu
+
+release_root=${1:-"$(cd -- "$(dirname -- "$0")/../.." && pwd -P)"}
+admin_dir="$release_root/admin"
+if [ -d "$admin_dir" ]; then
+	lock_dir="${release_root}.admin-locked-$(date +%s)"
+	mv -- "$admin_dir" "$lock_dir"
+	printf '%s\n' "Locked installer directory at $lock_dir"
+fi

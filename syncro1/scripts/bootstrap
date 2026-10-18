@@ -1,0 +1,118 @@
+#!/usr/bin/env php
+<?php
+/** Idempotent SYNCRO1 plugin, admin and seed bootstrap. */
+
+$t_root = dirname( __DIR__, 2 );
+$t_env = static function( $p_name, $p_default = null ) {
+	$t_value = getenv( $p_name );
+	return false === $t_value || '' === $t_value ? $p_default : $t_value;
+};
+$t_required = static function( $p_name ) use ( $t_env ) {
+	$t_value = $t_env( $p_name );
+	if( null === $t_value || '' === $t_value ) {
+		fwrite( STDERR, "Missing required environment variable: $p_name\n" );
+		exit( 1 );
+	}
+	return $t_value;
+};
+
+$t_admin_email = strtolower( trim( $t_required( 'ADMIN_EMAIL' ) ) );
+$t_admin_password = $t_required( 'ADMIN_INITIAL_PASSWORD' );
+if( strlen( $t_admin_password ) < 16 ) {
+	fwrite( STDERR, "ADMIN_INITIAL_PASSWORD must be at least 16 characters.\n" );
+	exit( 1 );
+}
+
+require_once $t_root . '/core.php';
+require_api( 'category_api.php' );
+require_api( 'custom_field_api.php' );
+require_api( 'plugin_api.php' );
+require_api( 'project_api.php' );
+require_api( 'user_api.php' );
+require_api( 'version_api.php' );
+
+$t_allowed = array_values( array_filter( array_map( 'strtolower', array_map( 'trim', explode( ',', $t_env( 'ALLOWED_EMAIL_DOMAINS', 'syncro1.com,syncrosquad.com' ) ) ) ), 'strlen' ) );
+$t_email_at = strrpos( $t_admin_email, '@' );
+if( false === $t_email_at || !in_array( substr( $t_admin_email, $t_email_at + 1 ), $t_allowed, true ) ) {
+	fwrite( STDERR, "ADMIN_EMAIL must end in an allowed company domain.\n" );
+	exit( 1 );
+}
+
+# Install and initialize the plugin before invoking user_create(), so its
+# security-critical pre-mutation validator is active for this CLI path.
+$t_plugins = plugin_find_all();
+if( isset( $t_plugins['Syncro1'] ) && !plugin_is_installed( 'Syncro1' ) ) {
+	plugin_install( $t_plugins['Syncro1'] );
+}
+plugin_init_installed();
+
+$t_admin_username = $t_env( 'ADMIN_USERNAME', 'syn_admin' );
+$t_admin_id = user_get_id_by_name( $t_admin_username );
+if( false === $t_admin_id ) {
+	user_create( $t_admin_username, $t_admin_password, $t_admin_email, ADMINISTRATOR, false, true, 'SYNCRO1 Administrator', 'bootstrap' );
+	$t_admin_id = user_get_id_by_name( $t_admin_username, true );
+} else {
+	user_set_field( $t_admin_id, 'protected', false );
+	user_ensure_email_valid( $t_admin_id, $t_admin_email );
+	user_set_email( $t_admin_id, $t_admin_email );
+	user_set_password( $t_admin_id, $t_admin_password );
+	user_set_fields( $t_admin_id, array( 'access_level' => ADMINISTRATOR, 'enabled' => true, 'protected' => true ) );
+}
+
+# The installer-created administrator/root accounts are not part of SYNCRO1.
+foreach( array( 'administrator', 'root' ) as $t_legacy_name ) {
+	$t_legacy_id = user_get_id_by_name( $t_legacy_name );
+	if( false !== $t_legacy_id && $t_legacy_id !== $t_admin_id ) {
+		user_set_field( $t_legacy_id, 'protected', false );
+		$t_legacy_email = 'disabled+' . $t_legacy_name . '@syncro1.com';
+		user_ensure_email_valid( $t_legacy_id, $t_legacy_email );
+		user_set_email( $t_legacy_id, $t_legacy_email );
+		user_set_fields( $t_legacy_id, array( 'enabled' => false, 'protected' => true ) );
+	}
+}
+
+$t_project_name = $t_env( 'DEFAULT_PROJECT_NAME', 'SYNCRO1 Product' );
+$t_project_id = project_get_id_by_name( $t_project_name, false );
+if( null === $t_project_id || false === $t_project_id ) {
+	$t_project_id = project_create( $t_project_name, 'SYNCRO1 product issues', 10, VS_PUBLIC, '', true, true );
+}
+
+$t_seed = json_decode( file_get_contents( $t_root . '/syncro1/seed/seed.json' ), true, 512, JSON_THROW_ON_ERROR );
+foreach( $t_seed['categories'] as $t_category ) {
+	if( false === category_get_id_by_name( $t_category, $t_project_id, false ) ) {
+		category_add( $t_project_id, $t_category );
+	}
+}
+if( false === version_get_id( $t_seed['project']['version'], $t_project_id, false ) ) {
+	version_add( $t_project_id, $t_seed['project']['version'], VERSION_FUTURE );
+}
+
+foreach( $t_seed['custom_fields'] as $t_field ) {
+	$t_field_id = custom_field_get_id_from_name( $t_field['name'] );
+	if( false === $t_field_id ) {
+		$t_field_id = custom_field_create( $t_field['name'] );
+	}
+	custom_field_update( $t_field_id, array(
+		'name' => $t_field['name'],
+		'type' => CUSTOM_FIELD_TYPE_LIST,
+		'possible_values' => implode( '|', $t_field['values'] ),
+		'default_value' => '',
+		'valid_regexp' => '',
+		'access_level_r' => REPORTER,
+		'access_level_rw' => DEVELOPER,
+		'length_min' => 0,
+		'length_max' => 0,
+		'filter_by' => true,
+		'display_report' => true,
+		'display_update' => true,
+		'display_resolved' => true,
+		'display_closed' => true,
+		'require_report' => false,
+		'require_update' => false,
+		'require_resolved' => false,
+		'require_closed' => false,
+	) );
+	custom_field_link( $t_field_id, $t_project_id );
+}
+
+fwrite( STDOUT, "SYNCRO1 bootstrap complete for project $t_project_id and admin $t_admin_username.\n" );

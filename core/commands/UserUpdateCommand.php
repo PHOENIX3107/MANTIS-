@@ -183,7 +183,8 @@ class UserUpdateCommand extends Command {
 
 		# Email
 		$t_old_email = user_get_field( $this->user_id, 'email' );
-		$t_new_email = isset( $t_user['email'] ) ? trim( $t_user['email'] ) : null;
+		# SYNCRO1-PATCH: preserve raw input for strict email validation.
+		$t_new_email = isset( $t_user['email'] ) ? $t_user['email'] : null;
 
 		# ... if email should be set by LDAP, then fetch it.
 		if( $t_ldap && config_get_global( 'use_ldap_email' ) ) {

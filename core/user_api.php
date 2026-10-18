@@ -659,6 +659,9 @@ function user_create( $p_username, $p_password, $p_email = '',
 
 	user_ensure_name_valid( $p_username );
 	user_ensure_name_unique( $p_username );
+	# SYNCRO1-PATCH: plugins need a pre-mutation hook because the existing
+	# EVENT_MANAGE_USER_CREATE event fires after the INSERT.
+	event_signal( 'EVENT_USER_EMAIL_VALIDATE', array( 'user_id' => 0, 'email' => $p_email, 'operation' => 'create' ) );
 	user_ensure_email_unique( $p_email );
 	email_ensure_valid( $p_email );
 	email_ensure_not_disposable( $p_email );
@@ -1927,6 +1930,9 @@ function user_set_password( $p_user_id, $p_password, $p_allow_protected = false 
  * @throws ClientException If mail is not valid.
  */
 function user_ensure_email_valid( $p_user_id, $p_email ) {
+	# SYNCRO1-PATCH: this is the common path for admin, self-service and token
+	# email changes; REST/SOAP callers ultimately use the same API.
+	event_signal( 'EVENT_USER_EMAIL_VALIDATE', array( 'user_id' => (int)$p_user_id, 'email' => $p_email, 'operation' => 'update' ) );
 	$p_email = trim( $p_email );
 
 	email_ensure_valid( $p_email );

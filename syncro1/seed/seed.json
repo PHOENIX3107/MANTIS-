@@ -1,0 +1,30 @@
+{
+  "project": {
+    "name": "${DEFAULT_PROJECT_NAME}",
+    "description": "SYNCRO1 product issues",
+    "version": "1.0.0"
+  },
+  "categories": [
+    "UI",
+    "Backend/API",
+    "Database",
+    "Performance",
+    "Security",
+    "Mobile",
+    "Integration",
+    "Documentation",
+    "Other"
+  ],
+  "custom_fields": [
+    {
+      "name": "Environment",
+      "type": "list",
+      "values": ["Production", "Staging", "QA", "Development"]
+    },
+    {
+      "name": "Module/Component",
+      "type": "list",
+      "values": ["Core", "UI", "Backend/API", "Database", "Mobile", "Integration", "Other"]
+    }
+  ]
+}

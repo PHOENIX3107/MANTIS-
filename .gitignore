@@ -18,6 +18,7 @@ plugins/*
 !plugins/MantisGraph
 !plugins/XmlImportExport
 !plugins/Gravatar
+!plugins/Syncro1
 
 # IDE/Editor temporary files
 *~
@@ -55,6 +56,16 @@ composer.phar
 
 # PHPUnit
 .phpunit.result.cache
+
+# SYNCRO1 local runtime data and secrets
+.env
+syncro1/runtime/
+syncro1/.installed
+syncro1/.admin-locked-*
+
+# The upstream config/ rule must not hide the versioned SYNCRO1 templates.
+!syncro1/config/
+!syncro1/config/**
 
 
 # Settings below are for convenience when switching branches on Dev machines

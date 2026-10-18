@@ -138,7 +138,6 @@ $t_ldap = ( LDAP == config_get_global( 'login_method' ) );
 if( !$t_account_verification
 	&& !( $t_ldap && config_get_global( 'use_ldap_email' ) )
 ) {
-	$f_email = trim( $f_email );
 	if( !is_blank( $f_email ) && $f_email != user_get_email( $t_user_id ) ) {
 		$t_update_email = true;
 	}

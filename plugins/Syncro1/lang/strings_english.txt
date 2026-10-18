@@ -1,0 +1,12 @@
+<?php
+$s_plugin_Syncro1_title = 'SYNCRO1 Integration';
+$s_plugin_Syncro1_description = 'SYNCRO1 branding, security policy, workflow helpers and developer actions.';
+$s_plugin_Syncro1_actions_title = 'Developer actions';
+$s_plugin_Syncro1_raise_ticket = 'Raise ticket';
+$s_plugin_Syncro1_start_work = 'Start work';
+$s_plugin_Syncro1_email_domain_error = 'Use a company email address ending in: %s.';
+$s_plugin_Syncro1_workflow_error = 'That workflow transition is not allowed.';
+$s_plugin_Syncro1_status_access_error = 'Only developers and administrators can change issue status, except reopening your own resolved issue.';
+$s_plugin_Syncro1_action_conflict = 'This issue was already taken by another developer. Refresh the page and try again.';
+$s_plugin_Syncro1_action_unavailable = 'This action is no longer available for the current issue status.';
+$s_plugin_Syncro1_ticket_raised_note = 'Ticket raised by %s.';

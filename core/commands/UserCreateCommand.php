@@ -115,7 +115,9 @@ class UserCreateCommand extends Command {
 		$this->enabled = $this->payload( 'enabled', true );
 
 		# Email
-		$this->email = trim( $this->payload( 'email', '' ) );
+		# SYNCRO1-PATCH: preserve raw input so the strict validator can reject
+		# whitespace-padded addresses instead of silently canonicalizing them.
+		$this->email = $this->payload( 'email', '' );
 
 		# Password
 		$this->password = $this->payload( 'password', '' );

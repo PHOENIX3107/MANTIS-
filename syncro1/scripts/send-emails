@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+script_root=$(cd -- "$(dirname -- "$0")/../.." && pwd -P)
+exec php "$script_root/scripts/send_emails.php"

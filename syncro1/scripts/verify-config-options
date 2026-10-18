@@ -1,0 +1,19 @@
+#!/usr/bin/env php
+<?php
+/** Verify config assignments against upstream config_defaults_inc.php globals. */
+
+$t_root = dirname( __DIR__, 2 );
+$t_defaults = file_get_contents( $t_root . '/config_defaults_inc.php' );
+$t_config = file_get_contents( $t_root . '/syncro1/config/config_inc.php' );
+preg_match_all( '/\$g_([A-Za-z0-9_]+)\s*=/', $t_config, $t_assignments );
+$t_missing = array();
+foreach( array_unique( $t_assignments[1] ) as $t_option ) {
+	if( !preg_match( '/\$g_' . preg_quote( $t_option, '/' ) . '\s*=/', $t_defaults ) ) {
+		$t_missing[] = $t_option;
+	}
+}
+if( $t_missing ) {
+	fwrite( STDERR, "Options not defined upstream: " . implode( ', ', $t_missing ) . "\n" );
+	exit( 1 );
+}
+fwrite( STDOUT, "All template assignments have upstream definitions.\n" );
