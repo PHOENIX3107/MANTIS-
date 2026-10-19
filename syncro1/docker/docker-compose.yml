@@ -31,6 +31,18 @@ services:
       timeout: 5s
       retries: 20
 
+  phpmyadmin:
+    image: phpmyadmin:5.2-apache
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_ARBITRARY: 0
+    ports:
+      - "127.0.0.1:8081:80"
+    depends_on:
+      mysql:
+        condition: service_healthy
+
   php-fpm:
     build:
       context: ../..
