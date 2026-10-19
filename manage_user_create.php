@@ -40,6 +40,7 @@ require_once( 'core.php' );
 require_api( 'access_api.php' );
 require_api( 'authentication_api.php' );
 require_api( 'constant_inc.php' );
+require_api( 'config_api.php' );
 require_api( 'form_api.php' );
 require_api( 'gpc_api.php' );
 require_api( 'helper_api.php' );
@@ -57,6 +58,9 @@ $f_username        = gpc_get_string( 'username' );
 $f_realname        = gpc_get_string( 'realname', '' );
 $f_password        = gpc_get_string( 'password', '' );
 $f_password_verify = gpc_get_string( 'password_verify', '' );
+$f_use_temporary_password = gpc_get_bool( 'use_temporary_password', false );
+$f_temporary_password = gpc_get_string( 'temporary_password', '' );
+$f_temporary_password_verify = gpc_get_string( 'temporary_password_verify', '' );
 $f_email           = gpc_get_string( 'email', '' );
 $f_access_level    = gpc_get_string( 'access_level' );
 $f_protected       = gpc_get_bool( 'protected' );
@@ -64,6 +68,21 @@ $f_enabled         = gpc_get_bool( 'enabled' );
 
 if( $f_password != $f_password_verify ) {
 	trigger_error( ERROR_USER_CREATE_PASSWORD_MISMATCH, ERROR );
+}
+
+if( $f_use_temporary_password ) {
+	if( is_blank( $f_temporary_password ) ) {
+		error_parameters( lang_get( 'password' ) );
+		trigger_error( ERROR_EMPTY_FIELD, ERROR );
+	}
+	if( $f_temporary_password !== $f_temporary_password_verify ) {
+		trigger_error( ERROR_USER_CREATE_PASSWORD_MISMATCH, ERROR );
+	}
+	$t_min_temporary_password_length = (int)config_get_global( 'syncro1_temporary_password_min_length', 12 );
+	if( strlen( $f_temporary_password ) < $t_min_temporary_password_length ) {
+		error_parameters( 'temporary_password' );
+		trigger_error( ERROR_INVALID_FIELD_VALUE, ERROR );
+	}
 }
 
 # Password won't be sent by email. It is entered by the admin
@@ -85,6 +104,8 @@ $t_data = array(
 		'access_level' => array( 'id' => $f_access_level ),
 		'real_name' => $f_realname,
 		'password' => $f_password,
+		'use_temporary_password' => $f_use_temporary_password,
+		'temporary_password' => $f_temporary_password,
 		'protected' => $f_protected,
 		'enabled' => $f_enabled
 	)
@@ -106,6 +127,9 @@ $t_message = lang_get( 'created_user_part1' )
 	. ' <span class="bold">' . $f_username . '</span> '
 	. lang_get( 'created_user_part2' )
 	. ' <span class="bold">' . $t_access_level . '</span><br />';
+if( $f_use_temporary_password ) {
+	$t_message .= '<span class="bold">Temporary password set. Give it to the user securely and ask them to change it from Account.</span>';
+}
 html_operation_successful( $t_redirect_url, $t_message );
 
 layout_page_end();

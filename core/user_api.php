@@ -642,13 +642,14 @@ function user_get_logged_in_user_ids( $p_session_duration_in_minutes ) {
  * @param bool   $p_enabled      Whether the account is enabled.
  * @param string $p_realname     The realname of the user.
  * @param string $p_admin_name   The name of the administrator creating the account.
+ * @param bool   $p_send_activation_email Whether to send the activation email.
  *
  * @return string Cookie String
  * @throws ClientException if error
  */
 function user_create( $p_username, $p_password, $p_email = '',
 	$p_access_level = null, $p_protected = false, $p_enabled = true,
-	$p_realname = '', $p_admin_name = '' ) {
+	$p_realname = '', $p_admin_name = '', $p_send_activation_email = true ) {
 	if( null === $p_access_level ) {
 		$p_access_level = config_get( 'default_new_account_access_level' );
 	}
@@ -687,7 +688,7 @@ function user_create( $p_username, $p_password, $p_email = '',
 	}
 
 	# Send notification email
-	if( !is_blank( $p_email ) ) {
+	if( $p_send_activation_email && !is_blank( $p_email ) ) {
 		$t_confirm_hash = auth_generate_confirm_hash( $t_user_id );
 		token_set( TOKEN_ACCOUNT_ACTIVATION, $t_confirm_hash, TOKEN_EXPIRY_ACCOUNT_ACTIVATION, $t_user_id );
 		email_signup( $t_user_id, $t_confirm_hash, $p_admin_name );

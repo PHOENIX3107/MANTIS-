@@ -35,8 +35,9 @@
 2. User email addresses are mandatory. The strict validator rejects blank,
    whitespace-padded, subdomain, lookalike, and malformed addresses even where
    the upstream domain option is permissive.
-3. Account creation remains administrator-only. Mantis’s password-reset email is
-   used for admin-created users; the admin does not set a permanent password.
+3. Account creation remains administrator-only. The admin may either use Mantis’s
+   activation email or set a temporary password at creation; the user is instructed
+   to change a temporary password from Account.
 4. `limit_view_unless_threshold = DEVELOPER` is the single visibility switch:
    reporters see only issues they reported/monitor/handle, while developers and
    administrators see all permitted project issues.

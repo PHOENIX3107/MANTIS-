@@ -60,6 +60,11 @@ class UserCreateCommand extends Command {
 	private $password;
 
 	/**
+	 * @var bool whether the administrator supplied a temporary password
+	 */
+	private $use_temporary_password;
+
+	/**
 	 * @var boolean user can edit their information.  Usually, true for shared accounts.
 	 */
 	private $protected;
@@ -121,7 +126,17 @@ class UserCreateCommand extends Command {
 
 		# Password
 		$this->password = $this->payload( 'password', '' );
-		if( ( ON == config_get( 'send_reset_password' ) ) &&
+		$this->use_temporary_password = (bool)$this->payload( 'use_temporary_password', false );
+		if( $this->use_temporary_password ) {
+			$this->password = $this->payload( 'temporary_password', '' );
+			if( is_blank( $this->password ) ) {
+				throw new ClientException( 'Temporary password is required', ERROR_EMPTY_FIELD, array( 'temporary_password' ) );
+			}
+			$t_min_temporary_password_length = (int)config_get_global( 'syncro1_temporary_password_min_length', 12 );
+			if( strlen( $this->password ) < $t_min_temporary_password_length ) {
+				throw new ClientException( 'Temporary password is too short', ERROR_INVALID_FIELD_VALUE, array( 'temporary_password' ) );
+			}
+		} elseif( ( ON == config_get( 'send_reset_password' ) ) &&
 		    ( ON == config_get( 'enable_email_notification' ) ) ) {
 			# Check code will be sent to the user directly via email. Dummy password set to random
 			# Create random password
@@ -151,7 +166,8 @@ class UserCreateCommand extends Command {
 			$this->protected,
 			$this->enabled,
 			$this->realname,
-			$t_admin_name );
+			$t_admin_name,
+			!$this->use_temporary_password );
 
 		# set language back to user language
 		lang_pop();

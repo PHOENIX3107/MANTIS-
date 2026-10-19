@@ -118,6 +118,37 @@ print_manage_menu( 'manage_user_create_page.php' );
 					<input type="password" id="user-verify-password" name="password_verify" size="32" maxlength="<?php echo auth_get_password_max_size(); ?>" />
 				</td>
 			</tr><?php
+			} else { ?>
+			<tr>
+				<td class="category">
+					<label for="user-use-temporary-password">
+						Temporary password
+					</label>
+				</td>
+				<td>
+					<label>
+						<input type="checkbox" class="ace" id="user-use-temporary-password" name="use_temporary_password" value="1">
+						<span class="lbl"> Set a temporary password now</span>
+					</label>
+					<div class="help-block">The user can sign in with this password and should change it from Account. Leave unchecked to send the normal activation email.</div>
+				</td>
+			</tr>
+			<tr>
+				<td class="category">
+					<label for="user-temporary-password">Temporary password</label>
+				</td>
+				<td>
+					<input type="password" id="user-temporary-password" name="temporary_password" size="32" maxlength="<?php echo auth_get_password_max_size(); ?>" minlength="12" autocomplete="new-password" />
+				</td>
+			</tr>
+			<tr>
+				<td class="category">
+					<label for="user-temporary-password-verify"><?php echo lang_get( 'verify_password' ) ?></label>
+				</td>
+				<td>
+					<input type="password" id="user-temporary-password-verify" name="temporary_password_verify" size="32" maxlength="<?php echo auth_get_password_max_size(); ?>" minlength="12" autocomplete="new-password" />
+				</td>
+			</tr><?php
 			} ?>
 			<tr>
 				<td class="category">

@@ -8,7 +8,7 @@ completed locally; it is not a pass.
 |---|---|---|
 | AC-1 | PASS | `RESTORE_DRILL_CONFIRM=YES syncro1/tests/restore-drill.sh` rebuilt the stack, installed the schema, restored data, and ended with `healthcheck.php ... ok`. |
 | AC-2 | PASS | `docker compose ... exec php-fpm syncro1/scripts/verify-config-options` printed `All template assignments have upstream definitions.`; `curl /` returned `HTTP/1.1 302 Found` and `Location: http://localhost:8080/login_page.php`. |
-| AC-3 | PASS | `npm run test:e2e -- --reporter=line` included `AC-3: administrator creates user and developers; Mailpit activation sets passwords`; final result `10 passed (2.3m)`. |
+| AC-3 | PASS | `npm run test:e2e -- --reporter=line` included `AC-3: administrator creates user and developers; Mailpit activation sets passwords`; final result `10 passed (2.3m)`. The additional temporary-password test `npx playwright test e2e/temporary-password.spec.js --reporter=line` ended `1 passed (14.7s)` and verified MySQL hashing, no activation email, temporary-password login/change, and short-password rejection. |
 | AC-4 | PASS | The same Playwright run included `AC-4: invalid domains are rejected on create, administrator edit, and self edit`; final result `10 passed (2.3m)`. |
 | AC-5 | UNVERIFIED | `make test` executed the 12 email-policy cases and user audit, but no separate authenticated authorization matrix for every AC-5 threshold was executed. |
 | AC-6 | PASS | Playwright AC-6 created a private report with `fixture.txt`, verified the reporter/developer attachment link, and verified the second user was denied; final suite `10 passed (2.3m)`. |

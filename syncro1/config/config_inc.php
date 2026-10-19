@@ -57,6 +57,7 @@ $g_manage_project_threshold = ADMINISTRATOR;
 $g_manage_configuration_threshold = ADMINISTRATOR;
 $g_manage_plugin_threshold = ADMINISTRATOR;
 $g_default_new_account_access_level = REPORTER;
+$g_syncro1_temporary_password_min_length = 12;
 $g_handle_bug_threshold = DEVELOPER;
 $g_update_bug_threshold = DEVELOPER;
 $g_update_bug_assign_threshold = DEVELOPER;
