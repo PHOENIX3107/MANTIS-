@@ -1,0 +1,20 @@
+.git
+.github
+.env
+.env.*
+node_modules
+test-results
+playwright-report
+
+# Development and repository-only material; these are not needed at runtime.
+e2e
+tests
+doc
+docbook
+build
+syncro1/docs
+syncro1/infra
+syncro1/tests
+
+# Composer installs the runtime dependencies inside the image.
+vendor
